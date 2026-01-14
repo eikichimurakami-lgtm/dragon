@@ -267,6 +267,23 @@
         padding-bottom: 80px;
       }
       
+      /* スマホ用アイコンサイズ */
+      #dragon {
+        font-size: 35px;
+      }
+      
+      .fire {
+        font-size: 20px;
+      }
+      
+      .enemy {
+        font-size: 28px;
+      }
+      
+      .boss {
+        font-size: 50px;
+      }
+      
       .overlay p {
         font-size: 1.05rem;
         margin-bottom: 10px;
@@ -427,6 +444,15 @@
     let gameStartTime = 0;
     let currentLevel = 1;
     let lastBossTime = 0;
+    
+    // ゲームエリアのサイズを取得する関数
+    function getGameAreaSize() {
+      const gameArea = document.getElementById('gameArea');
+      return {
+        width: gameArea.offsetWidth,
+        height: gameArea.offsetHeight
+      };
+    }
     
     // オーディオコンテキスト
     let audioCtx = null;
@@ -666,13 +692,14 @@
     // 星の背景を生成
     function createStars() {
       const starsContainer = document.getElementById('stars');
+      const size = getGameAreaSize();
       for (let i = 0; i < 50; i++) {
         const star = document.createElement('div');
         star.className = 'star';
         star.style.width = '2px';
         star.style.height = '2px';
-        star.style.left = Math.random() * 1000 + 'px';
-        star.style.top = Math.random() * 550 + 'px';
+        star.style.left = Math.random() * size.width + 'px';
+        star.style.top = Math.random() * size.height + 'px';
         starsContainer.appendChild(star);
       }
     }
@@ -699,18 +726,19 @@
       if (gameOver || !gameStarted) return;
       
       const speed = 40;
+      const size = getGameAreaSize();
       
       if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
         dragon.y = Math.max(20, dragon.y - speed);
       }
       if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
-        dragon.y = Math.min(490, dragon.y + speed);
+        dragon.y = Math.min(size.height - 60, dragon.y + speed);
       }
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         dragon.x = Math.max(20, dragon.x - speed);
       }
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        dragon.x = Math.min(400, dragon.x + speed);
+        dragon.x = Math.min(size.width * 0.4, dragon.x + speed);
       }
       
       updateDragonPosition();
@@ -754,9 +782,10 @@
       const isDiagonal = Math.random() < 0.5;
       const speedY = isDiagonal ? (Math.random() < 0.5 ? 2 : -2) + (Math.random() - 0.5) : 0;
       
+      const size = getGameAreaSize();
       const enemy = {
-        x: 1000,
-        y: Math.random() * 470 + 30,
+        x: size.width + 50,
+        y: Math.random() * (size.height - 80) + 30,
         id: Date.now(),
         speed: baseSpeed + speedVariation,
         speedY: speedY,
@@ -778,9 +807,10 @@
     
     // ボスを生成
     function spawnBoss() {
+      const size = getGameAreaSize();
       const boss = {
-        x: 1000,
-        y: 200 + Math.random() * 150,
+        x: size.width + 50,
+        y: size.height / 2 - 50 + Math.random() * 100,
         id: Date.now(),
         speed: 1.5,
         speedY: 2,
@@ -833,10 +863,13 @@
         levelValue.textContent = currentLevel;
       }
       
+      // ゲームエリアサイズを取得
+      const size = getGameAreaSize();
+      
       // 炎を移動
       fires = fires.filter(fire => {
         fire.x += 15;
-        if (fire.x > 1050) {
+        if (fire.x > size.width + 50) {
           fire.element.remove();
           return false;
         }
@@ -855,8 +888,8 @@
             enemy.y = 10;
             enemy.speedY = Math.abs(enemy.speedY);
           }
-          if (enemy.y >= 500) {
-            enemy.y = 500;
+          if (enemy.y >= size.height - 50) {
+            enemy.y = size.height - 50;
             enemy.speedY = -Math.abs(enemy.speedY);
           }
           
@@ -895,8 +928,8 @@
           boss.y = 30;
           boss.speedY = Math.abs(boss.speedY);
         }
-        if (boss.y >= 460) {
-          boss.y = 460;
+        if (boss.y >= size.height - 90) {
+          boss.y = size.height - 90;
           boss.speedY = -Math.abs(boss.speedY);
         }
         
@@ -918,7 +951,7 @@
       fires.forEach((fire, fIndex) => {
         enemies.forEach((enemy, eIndex) => {
           if (checkCollision(fire, enemy, 30, 40)) {
-            const positionBonus = Math.floor(dragon.x / 400 * 20);
+            const positionBonus = Math.floor(dragon.x / (size.width * 0.4) * 20);
             const points = 10 + positionBonus;
             score += points;
             updateScore();
@@ -941,7 +974,7 @@
             boss.hpBar.firstChild.style.width = hpPercent + '%';
             
             if (boss.hp <= 0) {
-              const positionBonus = Math.floor(dragon.x / 400 * 50);
+              const positionBonus = Math.floor(dragon.x / (size.width * 0.4) * 50);
               const points = 100 + positionBonus;
               score += points;
               updateScore();
@@ -1020,7 +1053,8 @@
         boss.hpBar.remove();
       });
       
-      dragon = { x: 100, y: 250 };
+      const size = getGameAreaSize();
+      dragon = { x: 80, y: size.height / 2 - 25 };
       fires = [];
       enemies = [];
       bosses = [];
@@ -1044,8 +1078,14 @@
     }
     
     // 初期化
-    createStars();
-    updateDragonPosition();
+    function initGame() {
+      const size = getGameAreaSize();
+      dragon = { x: 80, y: size.height / 2 - 25 };
+      createStars();
+      updateDragonPosition();
+    }
+    
+    initGame();
     window.addEventListener('keydown', handleKeyDown);
     
     // タッチコントローラーの設定
@@ -1067,10 +1107,11 @@
     }
     
     function moveDragon(direction) {
+      const size = getGameAreaSize();
       if (direction === 'up') dragon.y = Math.max(20, dragon.y - speed);
-      if (direction === 'down') dragon.y = Math.min(490, dragon.y + speed);
+      if (direction === 'down') dragon.y = Math.min(size.height - 60, dragon.y + speed);
       if (direction === 'left') dragon.x = Math.max(20, dragon.x - speed);
-      if (direction === 'right') dragon.x = Math.min(400, dragon.x + speed);
+      if (direction === 'right') dragon.x = Math.min(size.width * 0.4, dragon.x + speed);
       updateDragonPosition();
     }
     
