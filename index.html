@@ -268,23 +268,23 @@
       }
       
       .overlay p {
-        font-size: 0.85rem;
-        margin-bottom: 8px;
+        font-size: 1.05rem;
+        margin-bottom: 10px;
       }
       
       .overlay .game-over-text {
-        font-size: 2rem;
-        margin-bottom: 12px;
-      }
-      
-      .overlay .final-score {
-        font-size: 1.2rem;
+        font-size: 2.4rem;
         margin-bottom: 15px;
       }
       
+      .overlay .final-score {
+        font-size: 1.5rem;
+        margin-bottom: 18px;
+      }
+      
       .btn {
-        padding: 12px 30px;
-        font-size: 1.1rem;
+        padding: 15px 38px;
+        font-size: 1.3rem;
       }
     }
     
@@ -317,45 +317,45 @@
       }
       
       .overlay p {
-        font-size: 0.7rem;
-        margin-bottom: 6px;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
         padding: 0 15px;
       }
       
       .overlay .game-over-text {
-        font-size: 1.6rem;
-        margin-bottom: 10px;
-      }
-      
-      .overlay .final-score {
-        font-size: 1rem;
+        font-size: 2rem;
         margin-bottom: 12px;
       }
       
+      .overlay .final-score {
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+      }
+      
       .btn {
-        padding: 10px 24px;
-        font-size: 0.95rem;
+        padding: 13px 32px;
+        font-size: 1.15rem;
       }
     }
     
     @media (max-width: 400px) {
       .overlay p {
-        font-size: 0.6rem;
-        margin-bottom: 5px;
+        font-size: 0.78rem;
+        margin-bottom: 6px;
         padding: 0 10px;
       }
       
       .overlay .game-over-text {
-        font-size: 1.4rem;
+        font-size: 1.7rem;
       }
       
       .overlay .final-score {
-        font-size: 0.9rem;
+        font-size: 1.1rem;
       }
       
       .btn {
-        padding: 8px 20px;
-        font-size: 0.85rem;
+        padding: 11px 26px;
+        font-size: 1.05rem;
       }
     }
   </style>
@@ -380,7 +380,7 @@
     <div id="startOverlay" class="overlay">
       <p>矢印キー（またはWASD）で移動</p>
       <p>スペースキーで炎を撃つ！</p>
-      <p style="color: #ff6666; margin-top: 10px;">🐲 20秒ごとにボス出現！3回攻撃で倒せる</p>
+      <p style="color: #ff6666; margin-top: 10px;">🐲 ボスは3回攻撃で倒せる！</p>
       <p style="color: #66ff66;">右側で敵を倒すほど高得点！</p>
       <button class="btn" onclick="startGame()">ゲームスタート！</button>
     </div>
@@ -450,35 +450,100 @@
       bgmGain.gain.value = 0.1;
       bgmGain.connect(audioCtx.destination);
       
-      const notes = [261.63, 329.63, 392.00, 523.25];
-      let noteIndex = 0;
+      // メロディパターン（4小節分）
+      const melodyPatterns = [
+        [261.63, 329.63, 392.00, 329.63],  // C E G E
+        [293.66, 349.23, 440.00, 349.23],  // D F A F
+        [329.63, 392.00, 493.88, 392.00],  // E G B G
+        [261.63, 392.00, 523.25, 392.00],  // C G C5 G
+      ];
       
-      function playNote() {
+      // ベースパターン
+      const bassPatterns = [
+        [130.81, 130.81, 98.00, 98.00],    // C2
+        [146.83, 146.83, 110.00, 110.00],  // D2
+        [164.81, 164.81, 123.47, 123.47],  // E2
+        [130.81, 130.81, 130.81, 196.00],  // C2 G2
+      ];
+      
+      let patternIndex = 0;
+      let noteIndex = 0;
+      let beatCount = 0;
+      
+      function playBeat() {
         if (gameOver || !gameStarted) return;
         
-        const osc = audioCtx.createOscillator();
-        const noteGain = audioCtx.createGain();
+        const currentMelody = melodyPatterns[patternIndex];
+        const currentBass = bassPatterns[patternIndex];
         
-        osc.type = 'triangle';
-        osc.frequency.value = notes[noteIndex];
+        // メロディ音
+        const melodyOsc = audioCtx.createOscillator();
+        const melodyGain = audioCtx.createGain();
+        melodyOsc.type = 'triangle';
+        melodyOsc.frequency.value = currentMelody[noteIndex];
+        melodyGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        melodyGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+        melodyOsc.connect(melodyGain);
+        melodyGain.connect(audioCtx.destination);
+        melodyOsc.start();
+        melodyOsc.stop(audioCtx.currentTime + 0.2);
         
-        noteGain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        noteGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        // ベース音（2拍に1回）
+        if (noteIndex % 2 === 0) {
+          const bassOsc = audioCtx.createOscillator();
+          const bassGain = audioCtx.createGain();
+          bassOsc.type = 'sine';
+          bassOsc.frequency.value = currentBass[noteIndex];
+          bassGain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+          bassGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+          bassOsc.connect(bassGain);
+          bassGain.connect(audioCtx.destination);
+          bassOsc.start();
+          bassOsc.stop(audioCtx.currentTime + 0.4);
+        }
         
-        osc.connect(noteGain);
-        noteGain.connect(audioCtx.destination);
+        // ドラム的なパーカッション（4拍に1回）
+        if (beatCount % 4 === 0) {
+          const kickOsc = audioCtx.createOscillator();
+          const kickGain = audioCtx.createGain();
+          kickOsc.type = 'sine';
+          kickOsc.frequency.setValueAtTime(150, audioCtx.currentTime);
+          kickOsc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+          kickGain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          kickGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+          kickOsc.connect(kickGain);
+          kickGain.connect(audioCtx.destination);
+          kickOsc.start();
+          kickOsc.stop(audioCtx.currentTime + 0.1);
+        }
         
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
+        // ハイハット的な音（毎拍）
+        const hihatOsc = audioCtx.createOscillator();
+        const hihatGain = audioCtx.createGain();
+        hihatOsc.type = 'square';
+        hihatOsc.frequency.value = 800 + Math.random() * 200;
+        hihatGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+        hihatGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        hihatOsc.connect(hihatGain);
+        hihatGain.connect(audioCtx.destination);
+        hihatOsc.start();
+        hihatOsc.stop(audioCtx.currentTime + 0.05);
         
-        noteIndex = (noteIndex + 1) % notes.length;
+        noteIndex++;
+        beatCount++;
+        
+        // 1小節（4拍）終わったら次のパターン
+        if (noteIndex >= 4) {
+          noteIndex = 0;
+          patternIndex = (patternIndex + 1) % melodyPatterns.length;
+        }
         
         if (!gameOver && gameStarted) {
-          setTimeout(playNote, 200);
+          setTimeout(playBeat, 200);
         }
       }
       
-      playNote();
+      playBeat();
     }
     
     function stopBGM() {
@@ -819,8 +884,11 @@
       }
       
       // ボスを移動
-      bosses.forEach(boss => {
+      bosses = bosses.filter(boss => {
+        // 左に移動し続ける
         boss.x -= boss.speed;
+        
+        // 上下に動く
         boss.y += boss.speedY;
         
         if (boss.y <= 30) {
@@ -832,18 +900,18 @@
           boss.speedY = -Math.abs(boss.speedY);
         }
         
-        if (boss.x <= 400) {
-          boss.x = 400;
-          boss.speed = -Math.abs(boss.speed);
-        }
-        if (boss.x >= 900) {
-          boss.speed = Math.abs(boss.speed);
+        // 画面外に出たら削除
+        if (boss.x < -80) {
+          boss.element.remove();
+          boss.hpBar.remove();
+          return false;
         }
         
         boss.element.style.left = boss.x + 'px';
         boss.element.style.top = boss.y + 'px';
         boss.hpBar.style.left = boss.x + 'px';
         boss.hpBar.style.top = (boss.y - 15) + 'px';
+        return true;
       });
       
       // 炎と敵の当たり判定
@@ -927,7 +995,7 @@
       initAudio();
       gameStarted = true;
       gameStartTime = Date.now();
-      lastBossTime = 0;
+      lastBossTime = -10000;  // 最初のボスを10秒後に出すため
       startOverlay.classList.add('hidden');
       startBGM();
       gameLoop();
@@ -962,7 +1030,7 @@
       gameStarted = true;
       gameStartTime = Date.now();
       currentLevel = 1;
-      lastBossTime = 0;
+      lastBossTime = -10000;  // 最初のボスを10秒後に出すため
       
       updateDragonPosition();
       updateScore();
