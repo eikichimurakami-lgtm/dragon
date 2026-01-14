@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🐉 ドラゴンシューティング 🔥</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    
+    h1 {
+      color: #ff6b35;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    .stats {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 15px;
+      font-size: 1.3rem;
+    }
+    
+    .score {
+      color: #ffd700;
+    }
+    
+    .level {
+      color: #66ff66;
+    }
+    
+    .hp {
+      color: #ff6b6b;
+    }
+    
+    #gameArea {
+      position: relative;
+      width: 1000px;
+      height: 550px;
+      background: linear-gradient(to bottom, #1a1a4e, #2d1b4e);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 3px solid #444;
+    }
+    
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+    
+    #dragon {
+      position: absolute;
+      font-size: 50px;
+      transition: all 0.05s;
+      z-index: 10;
+    }
+    
+    .fire {
+      position: absolute;
+      font-size: 28px;
+      z-index: 5;
+    }
+    
+    .enemy {
+      position: absolute;
+      font-size: 40px;
+      z-index: 5;
+    }
+    
+    .boss {
+      position: absolute;
+      font-size: 70px;
+      z-index: 6;
+      filter: drop-shadow(0 0 10px #ff0000);
+    }
+    
+    .boss-hp-container {
+      position: absolute;
+      width: 60px;
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      z-index: 7;
+    }
+    
+    .boss-hp-bar {
+      height: 100%;
+      background: linear-gradient(to right, #ff0000, #ff6600);
+      border-radius: 4px;
+      transition: width 0.2s;
+    }
+    
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    .overlay.hidden {
+      display: none;
+    }
+    
+    .overlay p {
+      color: white;
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+    }
+    
+    .overlay .game-over-text {
+      color: #ff4444;
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    
+    .overlay .final-score {
+      color: #ffd700;
+      font-size: 1.8rem;
+      margin-bottom: 25px;
+    }
+    
+    .btn {
+      padding: 15px 40px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: white;
+      background: #ff6b35;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .btn:hover {
+      background: #ff8c5a;
+    }
+    
+    .controls {
+      margin-top: 15px;
+      color: #888;
+      font-size: 1rem;
+    }
+    
+    /* タッチコントローラー */
+    .touch-controls {
+      display: none;
+      width: 100%;
+      max-width: 1000px;
+      margin-top: 20px;
+      padding: 10px 15%;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .d-pad {
+      display: grid;
+      grid-template-columns: 60px 60px 60px;
+      grid-template-rows: 60px 60px 60px;
+      gap: 5px;
+    }
+    
+    .d-pad-btn {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 10px;
+      color: white;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    
+    .d-pad-btn:active {
+      background: rgba(255, 165, 0, 0.5);
+    }
+    
+    .d-pad-btn.empty {
+      background: transparent;
+      border: none;
+    }
+    
+    .attack-btn {
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(145deg, #ff6b35, #ff4500);
+      border: 3px solid #ff8c5a;
+      border-radius: 50%;
+      color: white;
+      font-size: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    }
+    
+    .attack-btn:active {
+      background: linear-gradient(145deg, #ff8c5a, #ff6b35);
+      transform: scale(0.95);
+    }
+    
+    /* スマホ表示時にタッチコントローラーを表示 */
+    @media (max-width: 1024px) {
+      .touch-controls {
+        display: flex;
+        padding: 10px 15%;
+      }
+      
+      .controls {
+        display: none;
+      }
+      
+      #gameArea {
+        width: 100%;
+        max-width: 100vw;
+        height: 50vh;
+        min-height: 300px;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+      }
+      
+      .stats {
+        font-size: 1rem;
+        gap: 20px;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .touch-controls {
+        padding: 10px 10%;
+      }
+      
+      .d-pad-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+      }
+      
+      .d-pad {
+        grid-template-columns: 50px 50px 50px;
+        grid-template-rows: 50px 50px 50px;
+      }
+      
+      .attack-btn {
+        width: 80px;
+        height: 80px;
+        font-size: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🐉 ドラゴンシューティング 🔥</h1>
+  
+  <div class="stats">
+    <div class="score">スコア: <span id="scoreValue">0</span></div>
+    <div class="level">レベル: <span id="levelValue">1</span></div>
+    <div class="hp">HP: <span id="hpValue">❤️❤️❤️</span></div>
+  </div>
+  
+  <div id="gameArea">
+    <!-- 星の背景 -->
+    <div id="stars"></div>
+    
+    <!-- ドラゴン -->
+    <div id="dragon">🐉</div>
+    
+    <!-- スタート画面 -->
+    <div id="startOverlay" class="overlay">
+      <p>矢印キー（またはWASD）で移動</p>
+      <p>スペースキーで炎を撃つ！</p>
+      <p style="color: #ff6666; margin-top: 10px;">🐲 20秒ごとにボス出現！3回攻撃で倒せる</p>
+      <p style="color: #66ff66;">右側で敵を倒すほど高得点！</p>
+      <button class="btn" onclick="startGame()">ゲームスタート！</button>
+    </div>
+    
+    <!-- ゲームオーバー画面 -->
+    <div id="gameOverOverlay" class="overlay hidden">
+      <p class="game-over-text">ゲームオーバー</p>
+      <p class="final-score">スコア: <span id="finalScore">0</span></p>
+      <button class="btn" onclick="restartGame()">もう一回！</button>
+    </div>
+  </div>
+  
+  <div class="controls">
+    ⬆️⬇️⬅️➡️ または WASD で移動 ｜ スペースキーで攻撃 ｜ 右側で倒すほど高得点！
+  </div>
+  
+  <!-- タッチコントローラー（スマホ用） -->
+  <div class="touch-controls">
+    <div class="d-pad">
+      <div class="d-pad-btn empty"></div>
+      <div class="d-pad-btn" id="btn-up">⬆️</div>
+      <div class="d-pad-btn empty"></div>
+      <div class="d-pad-btn" id="btn-left">⬅️</div>
+      <div class="d-pad-btn empty"></div>
+      <div class="d-pad-btn" id="btn-right">➡️</div>
+      <div class="d-pad-btn empty"></div>
+      <div class="d-pad-btn" id="btn-down">⬇️</div>
+      <div class="d-pad-btn empty"></div>
+    </div>
+    <div class="attack-btn" id="btn-attack">🔥</div>
+  </div>
+
+  <script>
+    // ゲーム状態
+    let dragon = { x: 100, y: 250 };
+    let fires = [];
+    let enemies = [];
+    let bosses = [];
+    let score = 0;
+    let hp = 3;
+    let gameOver = false;
+    let gameStarted = false;
+    let gameLoopId = null;
+    let gameStartTime = 0;
+    let currentLevel = 1;
+    let lastBossTime = 0;
+    
+    // オーディオコンテキスト
+    let audioCtx = null;
+    let bgmOscillator = null;
+    let bgmGain = null;
+    
+    // オーディオ初期化
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+    
+    // BGM開始
+    function startBGM() {
+      if (!audioCtx) return;
+      
+      stopBGM();
+      
+      bgmGain = audioCtx.createGain();
+      bgmGain.gain.value = 0.1;
+      bgmGain.connect(audioCtx.destination);
+      
+      const notes = [261.63, 329.63, 392.00, 523.25];
+      let noteIndex = 0;
+      
+      function playNote() {
+        if (gameOver || !gameStarted) return;
+        
+        const osc = audioCtx.createOscillator();
+        const noteGain = audioCtx.createGain();
+        
+        osc.type = 'triangle';
+        osc.frequency.value = notes[noteIndex];
+        
+        noteGain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        noteGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        
+        osc.connect(noteGain);
+        noteGain.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+        
+        noteIndex = (noteIndex + 1) % notes.length;
+        
+        if (!gameOver && gameStarted) {
+          setTimeout(playNote, 200);
+        }
+      }
+      
+      playNote();
+    }
+    
+    function stopBGM() {
+      if (bgmOscillator) {
+        try { bgmOscillator.stop(); } catch(e) {}
+        bgmOscillator = null;
+      }
+    }
+    
+    // 効果音：炎を撃つ
+    function playShootSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    }
+    
+    // 効果音：敵を倒した
+    function playHitSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    }
+    
+    // 効果音：ボスにダメージ
+    function playBossHitSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    }
+    
+    // 効果音：ボス撃破
+    function playBossDefeatedSound() {
+      if (!audioCtx) return;
+      [0, 0.1, 0.2, 0.3].forEach((delay, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 300 + i * 100;
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + delay + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + 0.15);
+      });
+    }
+    
+    // 効果音：ダメージ
+    function playDamageSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    }
+    
+    // 効果音：ゲームオーバー
+    function playGameOverSound() {
+      if (!audioCtx) return;
+      [0, 0.2, 0.4].forEach((delay, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 200 - i * 50;
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + delay + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + 0.25);
+      });
+    }
+    
+    // DOM要素
+    const gameArea = document.getElementById('gameArea');
+    const dragonEl = document.getElementById('dragon');
+    const startOverlay = document.getElementById('startOverlay');
+    const gameOverOverlay = document.getElementById('gameOverOverlay');
+    const scoreValue = document.getElementById('scoreValue');
+    const levelValue = document.getElementById('levelValue');
+    const hpValue = document.getElementById('hpValue');
+    const finalScore = document.getElementById('finalScore');
+    
+    // 星の背景を生成
+    function createStars() {
+      const starsContainer = document.getElementById('stars');
+      for (let i = 0; i < 50; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.width = '2px';
+        star.style.height = '2px';
+        star.style.left = Math.random() * 1000 + 'px';
+        star.style.top = Math.random() * 550 + 'px';
+        starsContainer.appendChild(star);
+      }
+    }
+    
+    function updateDragonPosition() {
+      dragonEl.style.left = dragon.x + 'px';
+      dragonEl.style.top = dragon.y + 'px';
+    }
+    
+    function updateHP() {
+      hpValue.textContent = '❤️'.repeat(hp) + '🖤'.repeat(3 - hp);
+    }
+    
+    function updateScore() {
+      scoreValue.textContent = score;
+    }
+    
+    // キー入力処理
+    function handleKeyDown(e) {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Spacebar'].includes(e.key)) {
+        e.preventDefault();
+      }
+      
+      if (gameOver || !gameStarted) return;
+      
+      const speed = 40;
+      
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+        dragon.y = Math.max(20, dragon.y - speed);
+      }
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+        dragon.y = Math.min(490, dragon.y + speed);
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        dragon.x = Math.max(20, dragon.x - speed);
+      }
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        dragon.x = Math.min(400, dragon.x + speed);
+      }
+      
+      updateDragonPosition();
+      
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        shootFire();
+      }
+    }
+    
+    // 炎を撃つ
+    function shootFire() {
+      const fire = {
+        x: dragon.x + 50,
+        y: dragon.y + 15,
+        id: Date.now(),
+        element: null
+      };
+      
+      const fireEl = document.createElement('div');
+      fireEl.className = 'fire';
+      fireEl.textContent = '🔥';
+      fireEl.style.left = fire.x + 'px';
+      fireEl.style.top = fire.y + 'px';
+      gameArea.appendChild(fireEl);
+      
+      fire.element = fireEl;
+      fires.push(fire);
+      
+      playShootSound();
+    }
+    
+    // 敵を生成
+    function spawnEnemy() {
+      const enemyTypes = ['👻', '👾', '🦇'];
+      const elapsedSeconds = (Date.now() - gameStartTime) / 1000;
+      currentLevel = Math.floor(elapsedSeconds / 10) + 1;
+      
+      const baseSpeed = 1.5 + (currentLevel - 1) * 0.5;
+      const speedVariation = Math.random() * 1.5;
+      
+      const isDiagonal = Math.random() < 0.5;
+      const speedY = isDiagonal ? (Math.random() < 0.5 ? 2 : -2) + (Math.random() - 0.5) : 0;
+      
+      const enemy = {
+        x: 1000,
+        y: Math.random() * 470 + 30,
+        id: Date.now(),
+        speed: baseSpeed + speedVariation,
+        speedY: speedY,
+        isDiagonal: isDiagonal,
+        type: enemyTypes[Math.floor(Math.random() * enemyTypes.length)],
+        element: null
+      };
+      
+      const enemyEl = document.createElement('div');
+      enemyEl.className = 'enemy';
+      enemyEl.textContent = enemy.type;
+      enemyEl.style.left = enemy.x + 'px';
+      enemyEl.style.top = enemy.y + 'px';
+      gameArea.appendChild(enemyEl);
+      
+      enemy.element = enemyEl;
+      enemies.push(enemy);
+    }
+    
+    // ボスを生成
+    function spawnBoss() {
+      const boss = {
+        x: 1000,
+        y: 200 + Math.random() * 150,
+        id: Date.now(),
+        speed: 1.5,
+        speedY: 2,
+        hp: 3,
+        maxHp: 3,
+        element: null,
+        hpBar: null
+      };
+      
+      const bossEl = document.createElement('div');
+      bossEl.className = 'boss';
+      bossEl.textContent = '🐲';
+      bossEl.style.left = boss.x + 'px';
+      bossEl.style.top = boss.y + 'px';
+      gameArea.appendChild(bossEl);
+      
+      const hpBarContainer = document.createElement('div');
+      hpBarContainer.className = 'boss-hp-container';
+      hpBarContainer.style.left = boss.x + 'px';
+      hpBarContainer.style.top = (boss.y - 15) + 'px';
+      
+      const hpBar = document.createElement('div');
+      hpBar.className = 'boss-hp-bar';
+      hpBar.style.width = '100%';
+      hpBarContainer.appendChild(hpBar);
+      gameArea.appendChild(hpBarContainer);
+      
+      boss.element = bossEl;
+      boss.hpBar = hpBarContainer;
+      bosses.push(boss);
+    }
+    
+    // 当たり判定
+    function checkCollision(obj1, obj2, size1, size2) {
+      return obj1.x < obj2.x + size2 &&
+             obj1.x + size1 > obj2.x &&
+             obj1.y < obj2.y + size2 &&
+             obj1.y + size1 > obj2.y;
+    }
+    
+    // ゲームループ
+    function gameLoop() {
+      if (gameOver || !gameStarted) return;
+      
+      // レベル表示を更新
+      const elapsedSeconds = (Date.now() - gameStartTime) / 1000;
+      const newLevel = Math.floor(elapsedSeconds / 10) + 1;
+      if (newLevel !== currentLevel) {
+        currentLevel = newLevel;
+        levelValue.textContent = currentLevel;
+      }
+      
+      // 炎を移動
+      fires = fires.filter(fire => {
+        fire.x += 15;
+        if (fire.x > 1050) {
+          fire.element.remove();
+          return false;
+        }
+        fire.element.style.left = fire.x + 'px';
+        return true;
+      });
+      
+      // 敵を移動
+      enemies = enemies.filter(enemy => {
+        enemy.x -= enemy.speed;
+        
+        if (enemy.isDiagonal) {
+          enemy.y += enemy.speedY;
+          
+          if (enemy.y <= 10) {
+            enemy.y = 10;
+            enemy.speedY = Math.abs(enemy.speedY);
+          }
+          if (enemy.y >= 500) {
+            enemy.y = 500;
+            enemy.speedY = -Math.abs(enemy.speedY);
+          }
+          
+          enemy.element.style.top = enemy.y + 'px';
+        }
+        
+        if (enemy.x < -50) {
+          enemy.element.remove();
+          return false;
+        }
+        enemy.element.style.left = enemy.x + 'px';
+        return true;
+      });
+      
+      // 敵を追加（ランダム）
+      if (Math.random() < 0.03) {
+        spawnEnemy();
+      }
+      
+      // ボスを20秒ごとに追加
+      const elapsedTime = Date.now() - gameStartTime;
+      if (elapsedTime - lastBossTime >= 20000) {
+        spawnBoss();
+        lastBossTime = elapsedTime;
+      }
+      
+      // ボスを移動
+      bosses.forEach(boss => {
+        boss.x -= boss.speed;
+        boss.y += boss.speedY;
+        
+        if (boss.y <= 30) {
+          boss.y = 30;
+          boss.speedY = Math.abs(boss.speedY);
+        }
+        if (boss.y >= 460) {
+          boss.y = 460;
+          boss.speedY = -Math.abs(boss.speedY);
+        }
+        
+        if (boss.x <= 400) {
+          boss.x = 400;
+          boss.speed = -Math.abs(boss.speed);
+        }
+        if (boss.x >= 900) {
+          boss.speed = Math.abs(boss.speed);
+        }
+        
+        boss.element.style.left = boss.x + 'px';
+        boss.element.style.top = boss.y + 'px';
+        boss.hpBar.style.left = boss.x + 'px';
+        boss.hpBar.style.top = (boss.y - 15) + 'px';
+      });
+      
+      // 炎と敵の当たり判定
+      fires.forEach((fire, fIndex) => {
+        enemies.forEach((enemy, eIndex) => {
+          if (checkCollision(fire, enemy, 30, 40)) {
+            const positionBonus = Math.floor(dragon.x / 400 * 20);
+            const points = 10 + positionBonus;
+            score += points;
+            updateScore();
+            fire.element.remove();
+            enemy.element.remove();
+            fires.splice(fIndex, 1);
+            enemies.splice(eIndex, 1);
+            playHitSound();
+          }
+        });
+        
+        // 炎とボスの当たり判定
+        bosses.forEach((boss, bIndex) => {
+          if (checkCollision(fire, boss, 30, 70)) {
+            boss.hp--;
+            fire.element.remove();
+            fires.splice(fIndex, 1);
+            
+            const hpPercent = (boss.hp / boss.maxHp) * 100;
+            boss.hpBar.firstChild.style.width = hpPercent + '%';
+            
+            if (boss.hp <= 0) {
+              const positionBonus = Math.floor(dragon.x / 400 * 50);
+              const points = 100 + positionBonus;
+              score += points;
+              updateScore();
+              boss.element.remove();
+              boss.hpBar.remove();
+              bosses.splice(bIndex, 1);
+              playBossDefeatedSound();
+            } else {
+              playBossHitSound();
+            }
+          }
+        });
+      });
+      
+      // ドラゴンと敵の当たり判定
+      enemies.forEach((enemy, eIndex) => {
+        if (checkCollision(dragon, enemy, 50, 40)) {
+          hp--;
+          updateHP();
+          enemy.element.remove();
+          enemies.splice(eIndex, 1);
+          playDamageSound();
+          
+          if (hp <= 0) {
+            endGame();
+          }
+        }
+      });
+      
+      // ドラゴンとボスの当たり判定
+      bosses.forEach((boss, bIndex) => {
+        if (checkCollision(dragon, boss, 50, 70)) {
+          hp--;
+          updateHP();
+          playDamageSound();
+          
+          dragon.x = Math.max(20, dragon.x - 50);
+          updateDragonPosition();
+          
+          if (hp <= 0) {
+            endGame();
+          }
+        }
+      });
+      
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+    
+    // ゲーム開始
+    function startGame() {
+      initAudio();
+      gameStarted = true;
+      gameStartTime = Date.now();
+      lastBossTime = 0;
+      startOverlay.classList.add('hidden');
+      startBGM();
+      gameLoop();
+    }
+    
+    // ゲーム終了
+    function endGame() {
+      gameOver = true;
+      cancelAnimationFrame(gameLoopId);
+      stopBGM();
+      playGameOverSound();
+      finalScore.textContent = score;
+      gameOverOverlay.classList.remove('hidden');
+    }
+    
+    // ゲームリスタート
+    function restartGame() {
+      fires.forEach(fire => fire.element.remove());
+      enemies.forEach(enemy => enemy.element.remove());
+      bosses.forEach(boss => {
+        boss.element.remove();
+        boss.hpBar.remove();
+      });
+      
+      dragon = { x: 100, y: 250 };
+      fires = [];
+      enemies = [];
+      bosses = [];
+      score = 0;
+      hp = 3;
+      gameOver = false;
+      gameStarted = true;
+      gameStartTime = Date.now();
+      currentLevel = 1;
+      lastBossTime = 0;
+      
+      updateDragonPosition();
+      updateScore();
+      updateHP();
+      levelValue.textContent = 1;
+      
+      gameOverOverlay.classList.add('hidden');
+      
+      startBGM();
+      gameLoop();
+    }
+    
+    // 初期化
+    createStars();
+    updateDragonPosition();
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // タッチコントローラーの設定
+    let moveInterval = null;
+    const speed = 40;
+    
+    function startMove(direction) {
+      if (gameOver || !gameStarted) return;
+      
+      moveDragon(direction);
+      
+      moveInterval = setInterval(() => {
+        if (gameOver || !gameStarted) {
+          stopMove();
+          return;
+        }
+        moveDragon(direction);
+      }, 100);
+    }
+    
+    function moveDragon(direction) {
+      if (direction === 'up') dragon.y = Math.max(20, dragon.y - speed);
+      if (direction === 'down') dragon.y = Math.min(490, dragon.y + speed);
+      if (direction === 'left') dragon.x = Math.max(20, dragon.x - speed);
+      if (direction === 'right') dragon.x = Math.min(400, dragon.x + speed);
+      updateDragonPosition();
+    }
+    
+    function stopMove() {
+      if (moveInterval) {
+        clearInterval(moveInterval);
+        moveInterval = null;
+      }
+    }
+    
+    const btnUp = document.getElementById('btn-up');
+    const btnDown = document.getElementById('btn-down');
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnAttack = document.getElementById('btn-attack');
+    
+    btnUp.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('up'); });
+    btnUp.addEventListener('touchend', stopMove);
+    btnUp.addEventListener('touchcancel', stopMove);
+    
+    btnDown.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('down'); });
+    btnDown.addEventListener('touchend', stopMove);
+    btnDown.addEventListener('touchcancel', stopMove);
+    
+    btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('left'); });
+    btnLeft.addEventListener('touchend', stopMove);
+    btnLeft.addEventListener('touchcancel', stopMove);
+    
+    btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('right'); });
+    btnRight.addEventListener('touchend', stopMove);
+    btnRight.addEventListener('touchcancel', stopMove);
+    
+    btnAttack.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (gameOver || !gameStarted) return;
+      shootFire();
+    });
+    
+    btnUp.addEventListener('mousedown', () => startMove('up'));
+    btnUp.addEventListener('mouseup', stopMove);
+    btnUp.addEventListener('mouseleave', stopMove);
+    
+    btnDown.addEventListener('mousedown', () => startMove('down'));
+    btnDown.addEventListener('mouseup', stopMove);
+    btnDown.addEventListener('mouseleave', stopMove);
+    
+    btnLeft.addEventListener('mousedown', () => startMove('left'));
+    btnLeft.addEventListener('mouseup', stopMove);
+    btnLeft.addEventListener('mouseleave', stopMove);
+    
+    btnRight.addEventListener('mousedown', () => startMove('right'));
+    btnRight.addEventListener('mouseup', stopMove);
+    btnRight.addEventListener('mouseleave', stopMove);
+    
+    btnAttack.addEventListener('mousedown', () => {
+      if (gameOver || !gameStarted) return;
+      shootFire();
+    });
+  </script>
+</body>
+</html>
