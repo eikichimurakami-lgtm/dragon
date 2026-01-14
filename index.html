@@ -93,6 +93,28 @@
       filter: drop-shadow(0 0 10px #ff0000);
     }
     
+    .treasure {
+      position: absolute;
+      font-size: 35px;
+      z-index: 5;
+      animation: float 1s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    
+    #dragon.powered-up {
+      filter: drop-shadow(0 0 15px #ffff00) drop-shadow(0 0 30px #ff6600);
+      animation: glow 0.5s ease-in-out infinite alternate;
+    }
+    
+    @keyframes glow {
+      0% { filter: drop-shadow(0 0 15px #ffff00) drop-shadow(0 0 30px #ff6600); }
+      100% { filter: drop-shadow(0 0 25px #ffff00) drop-shadow(0 0 40px #ff6600); }
+    }
+    
     .boss-hp-container {
       position: absolute;
       width: 60px;
@@ -284,6 +306,10 @@
         font-size: 50px;
       }
       
+      .treasure {
+        font-size: 28px;
+      }
+      
       .overlay p {
         font-size: 1.05rem;
         margin-bottom: 10px;
@@ -398,6 +424,7 @@
       <p>矢印キー（またはWASD）で移動</p>
       <p>スペースキーで炎を撃つ！</p>
       <p style="color: #ff6666; margin-top: 10px;">🐲 ボスは3回攻撃で倒せる！</p>
+      <p style="color: #ffcc00;">🎁 宝箱で3方向攻撃パワーアップ！</p>
       <p style="color: #66ff66;">右側で敵を倒すほど高得点！</p>
       <button class="btn" onclick="startGame()">ゲームスタート！</button>
     </div>
@@ -444,6 +471,10 @@
     let gameStartTime = 0;
     let currentLevel = 1;
     let lastBossTime = 0;
+    let treasures = [];
+    let lastTreasureLevel = 0;
+    let isPoweredUp = false;
+    let powerUpEndTime = 0;
     
     // ゲームエリアのサイズを取得する関数
     function getGameAreaSize() {
@@ -750,24 +781,80 @@
     
     // 炎を撃つ
     function shootFire() {
-      const fire = {
-        x: dragon.x + 50,
-        y: dragon.y + 15,
+      // パワーアップ中は3方向、通常は1方向
+      const directions = isPoweredUp 
+        ? [0, -4, 4]  // 直進、斜め上、斜め下
+        : [0];        // 直進のみ
+      
+      directions.forEach(speedY => {
+        const fire = {
+          x: dragon.x + 50,
+          y: dragon.y + 15,
+          speedY: speedY,
+          id: Date.now() + speedY,
+          element: null
+        };
+        
+        const fireEl = document.createElement('div');
+        fireEl.className = 'fire';
+        fireEl.textContent = '🔥';
+        fireEl.style.left = fire.x + 'px';
+        fireEl.style.top = fire.y + 'px';
+        gameArea.appendChild(fireEl);
+        
+        fire.element = fireEl;
+        fires.push(fire);
+      });
+      
+      playShootSound();
+    }
+    
+    // 宝箱を生成
+    function spawnTreasure() {
+      const size = getGameAreaSize();
+      const treasure = {
+        x: size.width + 50,
+        y: Math.random() * (size.height - 80) + 40,
+        speed: 1.2,
         id: Date.now(),
         element: null
       };
       
-      const fireEl = document.createElement('div');
-      fireEl.className = 'fire';
-      fireEl.textContent = '🔥';
-      fireEl.style.left = fire.x + 'px';
-      fireEl.style.top = fire.y + 'px';
-      gameArea.appendChild(fireEl);
+      const treasureEl = document.createElement('div');
+      treasureEl.className = 'treasure';
+      treasureEl.textContent = '🎁';
+      treasureEl.style.left = treasure.x + 'px';
+      treasureEl.style.top = treasure.y + 'px';
+      gameArea.appendChild(treasureEl);
       
-      fire.element = fireEl;
-      fires.push(fire);
-      
-      playShootSound();
+      treasure.element = treasureEl;
+      treasures.push(treasure);
+    }
+    
+    // パワーアップ開始
+    function activatePowerUp() {
+      isPoweredUp = true;
+      powerUpEndTime = Date.now() + 15000; // 15秒間
+      dragonEl.classList.add('powered-up');
+      playPowerUpSound();
+    }
+    
+    // パワーアップ効果音
+    function playPowerUpSound() {
+      if (!audioCtx) return;
+      [0, 0.1, 0.2].forEach((delay, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 400 + i * 200;
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + delay + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + 0.25);
+      });
     }
     
     // 敵を生成
@@ -776,11 +863,13 @@
       const elapsedSeconds = (Date.now() - gameStartTime) / 1000;
       currentLevel = Math.floor(elapsedSeconds / 10) + 1;
       
-      const baseSpeed = 1.5 + (currentLevel - 1) * 0.5;
-      const speedVariation = Math.random() * 1.5;
+      // レベル3ごとに段階的にスピードアップ (レベル1-3, 4-6, 7-9...)
+      const speedTier = Math.floor((currentLevel - 1) / 3);
+      const baseSpeed = 0.8 + speedTier * 0.5;
+      const speedVariation = Math.random() * 0.8;
       
       const isDiagonal = Math.random() < 0.5;
-      const speedY = isDiagonal ? (Math.random() < 0.5 ? 2 : -2) + (Math.random() - 0.5) : 0;
+      const speedY = isDiagonal ? (Math.random() < 0.5 ? 1.5 : -1.5) + (Math.random() - 0.5) : 0;
       
       const size = getGameAreaSize();
       const enemy = {
@@ -808,12 +897,16 @@
     // ボスを生成
     function spawnBoss() {
       const size = getGameAreaSize();
+      // レベル3ごとに段階的にスピードアップ
+      const speedTier = Math.floor((currentLevel - 1) / 3);
+      const bossSpeed = 0.8 + speedTier * 0.3;
+      
       const boss = {
         x: size.width + 50,
         y: size.height / 2 - 50 + Math.random() * 100,
         id: Date.now(),
-        speed: 1.5,
-        speedY: 2,
+        speed: bossSpeed,
+        speedY: 1.5,
         hp: 3,
         maxHp: 3,
         element: null,
@@ -866,14 +959,53 @@
       // ゲームエリアサイズを取得
       const size = getGameAreaSize();
       
+      // パワーアップの終了チェック
+      if (isPoweredUp && Date.now() > powerUpEndTime) {
+        isPoweredUp = false;
+        dragonEl.classList.remove('powered-up');
+      }
+      
       // 炎を移動
       fires = fires.filter(fire => {
         fire.x += 15;
-        if (fire.x > size.width + 50) {
+        if (fire.speedY) {
+          fire.y += fire.speedY;
+        }
+        // 画面外に出たら削除
+        if (fire.x > size.width + 50 || fire.y < -30 || fire.y > size.height + 30) {
           fire.element.remove();
           return false;
         }
         fire.element.style.left = fire.x + 'px';
+        fire.element.style.top = fire.y + 'px';
+        return true;
+      });
+      
+      // 宝箱を移動
+      treasures = treasures.filter(treasure => {
+        treasure.x -= treasure.speed;
+        if (treasure.x < -50) {
+          treasure.element.remove();
+          return false;
+        }
+        treasure.element.style.left = treasure.x + 'px';
+        return true;
+      });
+      
+      // レベル3ごとに宝箱を出現させる（レベル3, 6, 9...）
+      const treasureLevel = Math.floor(currentLevel / 3);
+      if (treasureLevel > 0 && treasureLevel > lastTreasureLevel && currentLevel % 3 === 0) {
+        spawnTreasure();
+        lastTreasureLevel = treasureLevel;
+      }
+      
+      // ドラゴンと宝箱の当たり判定
+      treasures = treasures.filter(treasure => {
+        if (checkCollision(dragon, treasure, 50, 35)) {
+          treasure.element.remove();
+          activatePowerUp();
+          return false;
+        }
         return true;
       });
       
@@ -904,8 +1036,10 @@
         return true;
       });
       
-      // 敵を追加（ランダム）
-      if (Math.random() < 0.03) {
+      // 敵を追加（ランダム）- レベルに応じて出現頻度を上げる
+      // レベル1: 0.5%, レベル4: 1.5%, 最大3%
+      const spawnChance = Math.min(0.03, 0.005 + (currentLevel - 1) * 0.0033);
+      if (Math.random() < spawnChance) {
         spawnEnemy();
       }
       
@@ -1029,6 +1163,10 @@
       gameStarted = true;
       gameStartTime = Date.now();
       lastBossTime = -10000;  // 最初のボスを10秒後に出すため
+      lastTreasureLevel = 0;
+      isPoweredUp = false;
+      powerUpEndTime = 0;
+      dragonEl.classList.remove('powered-up');
       startOverlay.classList.add('hidden');
       startBGM();
       gameLoop();
@@ -1037,6 +1175,8 @@
     // ゲーム終了
     function endGame() {
       gameOver = true;
+      isPoweredUp = false;
+      dragonEl.classList.remove('powered-up');
       cancelAnimationFrame(gameLoopId);
       stopBGM();
       playGameOverSound();
@@ -1052,12 +1192,14 @@
         boss.element.remove();
         boss.hpBar.remove();
       });
+      treasures.forEach(treasure => treasure.element.remove());
       
       const size = getGameAreaSize();
       dragon = { x: 80, y: size.height / 2 - 25 };
       fires = [];
       enemies = [];
       bosses = [];
+      treasures = [];
       score = 0;
       hp = 3;
       gameOver = false;
@@ -1065,6 +1207,10 @@
       gameStartTime = Date.now();
       currentLevel = 1;
       lastBossTime = -10000;  // 最初のボスを10秒後に出すため
+      lastTreasureLevel = 0;
+      isPoweredUp = false;
+      powerUpEndTime = 0;
+      dragonEl.classList.remove('powered-up');
       
       updateDragonPosition();
       updateScore();
